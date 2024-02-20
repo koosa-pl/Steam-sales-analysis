@@ -19,7 +19,7 @@ All credits for creating the dataset goes to Rahul Dabholkar.
 
 ## Data cleaning and exploratory data analysis (EDA) process of the project:
 
-1. Downloaded the dataset (**games_data.csv**) and converted it to the JSON format (**steam_sales.json**) due to problems with loading it in CSV with Python.
+1. Downloaded the dataset (**games_data.csv**) and converted it to the JSON format due to problems with loading it in CSV with Python.
 
 2. Loaded the dataset and created a dataframe using pandas library and Jupyter Notebook.
 
