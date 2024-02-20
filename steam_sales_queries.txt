@@ -1,0 +1,92 @@
+SELECT COUNT(*) FROM `steam_sales.steam_sales_1000`; -- verifying no. of records
+
+SELECT COUNT(DISTINCT(title)) FROM `steam_sales.steam_sales_1000`; -- making sure there are no duplicates
+SELECT COUNT(DISTINCT(genres)) FROM `steam_sales.steam_sales_1000`;
+SELECT DISTINCT(multiplayer_or_singleplayer) FROM `steam_sales.steam_sales_1000` -- more verification
+
+SELECT COUNT(developer) FROM `steam_sales.steam_sales_1000`;
+SELECT COUNT(release_date) FROM `steam_sales.steam_sales_1000`;
+SELECT COUNT(publisher) FROM `steam_sales.steam_sales_1000`; -- in all, three are only 358 not null/more detailed records out of 998
+
+SELECT multiplayer_or_singleplayer, COUNT(multiplayer_or_singleplayer) FROM `prrrojekt.steam_sales.steam_sales_1000`
+GROUP BY (multiplayer_or_singleplayer); -- there are 319 singleplayer and 39 multiplayer games, the rest are null values
+
+SELECT genres, COUNT(genres) AS no_of_games FROM `prrrojekt.steam_sales.steam_sales_1000` GROUP BY genres ORDER BY no_of_games DESC; -- most popular genres
+
+SELECT ROUND(AVG(percent_positive)*100,2) 
+AS average_rating FROM `prrrojekt.steam_sales.steam_sales_1000`; -- the average rating for games in top 1000 is 86,73% of positive reviews
+
+SELECT ROUND(AVG(price__USD_),2) AS average_price_USD,
+(SELECT COUNT(price__USD_) FROM `prrrojekt.steam_sales.steam_sales_1000` WHERE price__USD_ = 0.0) AS no_of_freetoplay_games
+FROM `prrrojekt.steam_sales.steam_sales_1000`; -- average price for games in top 1000 is 10,07$, and there are 138 free to play games
+
+SELECT ROUND(AVG(dc_price__USD_),2) 
+AS average_price_discounted 
+FROM `prrrojekt.steam_sales.steam_sales_1000`; -- average discounted price is 9,76$, very minor difference with regular price, seems the discounted price data is incomplete/incorrect and therefore should be ignored
+
+SELECT overall_review, COUNT(overall_review) FROM `steam_sales.steam_sales_1000` GROUP BY overall_review;
+
+CREATE TABLE steam_reviews (
+    category varchar(45),
+    percent_of_positive varchar(45));
+    
+INSERT INTO steam_reviews (category, percent_of_positive)
+VALUES ('positive', '70-100'), ('mixed', '40-69'), ('negative', '0-39')
+
+CREATE TABLE steam_reviews_detailed (
+    category varchar(45),
+    percent_of_positive varchar(45));
+    
+INSERT INTO steam_reviews_detailed (category, percent_of_positive)
+VALUES ('Overhwelmingly Positive', '95-99'), ('Very Positive', '80-94'),
+('Mostly Positive', '70-79'), ('Mixed', '40-69'), ('Mostly Negative', '20-39'),
+('Very Negative', ‚0-19') -- the queries for creating new tables with steam review criteria
+were created in MySQL workbench and then imported to BigQury
+
+ALTER TABLE steam_sales.steam_reviews
+RENAME COLUMN string_field_0 TO category;
+
+ALTER TABLE steam_sales.steam_reviews
+RENAME COLUMN string_field_1 TO percent_of_positive_reviews; -- changing column names for table created in mysql workbench
+
+SELECT s.overall_review, COUNT(s.overall_review) as no_of_games, r.percent_of_positive_reviews
+FROM `prrrojekt.steam_sales.steam_sales_1000` s
+JOIN `steam_sales.steam_reviews` r ON (s.overall_review = r.category)
+GROUP BY r.percent_of_positive_reviews, s.overall_review; -- added how Steam divides percentage of positive reviews into categories (positive, mixed, negative)
+
+ALTER TABLE steam_sales.steam_reviews_detailed
+RENAME COLUMN string_field_0 TO category;
+
+ALTER TABLE steam_sales.steam_reviews_detailed
+RENAME COLUMN string_field_1 TO percent_of_positive_reviews; -- changing column names for table with detailed reviews categories, created in mysql workbench
+
+SELECT s.detailed_review, COUNT(s.detailed_review) as no_of_games, r.percent_of_positive_reviews
+FROM `prrrojekt.steam_sales.steam_sales_1000` s
+JOIN `steam_sales.steam_reviews_detailed` r ON (s.detailed_review = r.category) GROUP BY r.percent_of_positive_reviews, s.detailed_review
+ORDER BY no_of_games DESC; -- added how Steam divides percentage of positive reviews into more detailed categories
+
+SELECT EXTRACT(YEAR FROM release_date) AS release_year, COUNT(EXTRACT(YEAR FROM release_date)) AS no_of_games
+FROM `steam_sales.steam_sales_1000`
+GROUP BY release_year ORDER BY no_of_games DESC -- the most popular steam games are from 2018, 2017 and 2016 (but we have to remember that the data is incomplete!)
+
+SELECT CAST(AVG(reviews) AS INT64) as average_no_of_reviews
+FROM `steam_sales.steam_sales_1000` -- the average number of reviews for top 1000 most reviewed steam games is 66957
+
+SELECT 'Windows' AS operating_system, COUNT(win_support) AS no_of_games FROM `steam_sales.steam_sales_1000` WHERE win_support = 1
+UNION ALL
+SELECT 'MacOS', COUNT(mac_support) FROM `steam_sales.steam_sales_1000` WHERE mac_support = 1
+UNION ALL
+SELECT 'Linux', COUNT(lin_support) FROM `steam_sales.steam_sales_1000` WHERE lin_support = 1
+ORDER BY no_of_games DESC; -- every game in top 1000 supports Windows operating system, only select ones also support MacOS and/or Linux
+
+SELECT developer, COUNT(developer) AS no_of_games FROM `steam_sales.steam_sales_1000`
+GROUP BY developer
+HAVING no_of_games > 1
+ORDER BY no_of_games DESC; -- out of 358 records with not null developer, 31 of them released more than 2 games that occurred in top 1000 most popular steam games
+
+SELECT a.publisher, COUNT(a.publisher) AS no_of_games FROM `steam_sales.steam_sales_1000` a
+JOIN 
+(SELECT publisher, ROUND(AVG(percent_positive)*100,2) as rating FROM `steam_sales.steam_sales_1000` GROUP BY publisher HAVING rating >= 80) b
+ON a.publisher = b.publisher
+GROUP BY publisher HAVING no_of_games > 1
+ORDER BY no_of_games DESC; -- publishers with more than 1 games in top 1000 and average game rating in very/overwhelmingly positive category (equal or over 80% of positive reviews)
